@@ -52,7 +52,9 @@ void setup(); // # A Hack, An Arduino IED Compiler Preprocessor Fix
 
 //#define USE_PCA9546	1         // Define this symbol to include PCA9546 support
 //#define USE_I2C_LCD	1         // Define this symbol to include i2c LCD support
-
+//#define USE_MULTIPLEXED_BUTTONS 1 // Define this symbol to use a series of cascaded buttons+pullup
+//#define USE_ALTERNATE_TUNING 1  // Define this to use a classic radio tuning where buttons are used to move active digit
+                                  // You need the USE_MULTIPLEXED_BUTTONS and multiple buttons for this
 /*
  * Wire is only used from the Si570 module but we need to list it here so that
  * the Arduino environment knows we need it.
@@ -394,6 +396,9 @@ void readTuningPot(){
 }
 
 
+
+#ifdef USE_ALTERNATE_TUNING
+
 // ###############################################################################
 // An Alternate Tuning Strategy or Method
 // This method somewhat emulates a normal Radio Tuning Dial
@@ -481,6 +486,77 @@ void checkTuning() {
       tuningPositionPrevious = tuningPosition; // Set up for the next Iteration
   }
 }
+
+#else
+void checkTuning(){
+  int tuningPot = tuningPosition - 512;
+  if (-50 < tuningPot && tuningPot < 50){
+    //we are in the middle, so, let go of the lock
+    if (tuningLocked)
+      tuningLocked = 0;
+    delay(50);
+    return;
+  }
+
+  //if the tuning is locked and we are outside the safe band, then we don't move the freq.
+  if (tuningLocked)
+    return;
+
+  //dead region between -100 and 100
+  if (tuningPot > 100){
+    if (tuningPot < 150)
+      frequency += 10;
+    else if (tuningPot < 200)
+      frequency += 30;
+    else if (tuningPot < 250)
+      frequency += 100;
+    else if (tuningPot < 300)
+      frequency += 300;
+    else if (tuningPot < 350)
+      frequency += 1000;
+    else if (tuningPot < 400)
+      frequency += 3000;
+    else if (tuningPot < 450){
+      frequency += 100000;
+      updateDisplay();
+      delay(300);
+    }
+    else if (tuningPot < 500){
+      frequency += 1000000;
+      updateDisplay();
+      delay(300);
+    }
+  }
+
+  if (-100 > tuningPot){
+    if (tuningPot > -150)
+      frequency -= 10;
+    else if (tuningPot > -200)
+      frequency -= 30;
+    else if (tuningPot > -250)
+      frequency -= 100;
+    else if (tuningPot > -300)
+      frequency -= 300;
+    else if (tuningPot > -350)
+      frequency -= 1000;
+    else if (tuningPot > -400)
+      frequency -= 3000;
+    else if (tuningPot > -450){
+      frequency -= 100000;
+      updateDisplay();
+      delay(300);
+    }
+    else if (tuningPot > -500){
+      frequency -= 1000000;
+      updateDisplay();
+      delay(300);
+    }
+  }
+  delay(50);
+  refreshDisplay++;
+}
+
+#endif
 
 
 // ###############################################################################
@@ -652,7 +728,7 @@ void stopSidetone() {
 // ###############################################################################
 int btnDown(){
 #define DEBUG(x ...)
-//#define DEBUG(x ...) debugUnique(x)    // UnComment for Debug
+#define DEBUG(x ...) debugUnique(x)    // UnComment for Debug
   int val = -1, val2 = -2;
   
   val = analogRead(FN_PIN);
@@ -1055,7 +1131,11 @@ void setup() {
   
   // Setup to read Buttons
   pinMode(FN_PIN, INPUT);
+  #ifdef USE_MULTIPLEXED_BUTTONS
   digitalWrite(FN_PIN, 0); // Use an external pull-up of 47K ohm to AREF
+  #else
+  digitalWrite(FN_PIN, 1); 
+  #endif
   
   DEBUG(P("Pre Load EEPROM"));
   loadUserPerferences();
