@@ -3,6 +3,9 @@
 #ifndef A1MAIN_H
 #define A1MAIN_H
 
+// Defines boolean and byte
+#include <arduino.h>
+
     #define BANDS (9)
     
     #define BAND_HI_PIN (5)

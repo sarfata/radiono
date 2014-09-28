@@ -42,65 +42,34 @@
  *
  */
 
-void setup(); // # A Hack, An Arduino IED Compiler Preprocessor Fix
-
-
-//#define RADIONO_VERSION "0.4"
-#define RADIONO_VERSION "0.4.erb" // Modifications by: Eldon R. Brown - WA0UWH
-#define INC_REV "ko7m-AC"         // Incremental Rev Code
-#define INC_REV "ERB_FR"          // Incremental Rev Code
-
-//#define USE_PCA9546	1         // Define this symbol to include PCA9546 support
-//#define USE_I2C_LCD	1         // Define this symbol to include i2c LCD support
-//#define USE_MULTIPLEXED_BUTTONS 1 // Define this symbol to use a series of cascaded buttons+pullup
-//#define USE_ALTERNATE_TUNING 1  // Define this to use a classic radio tuning where buttons are used to move active digit
-                                  // You need the USE_MULTIPLEXED_BUTTONS and multiple buttons for this
 /*
  * Wire is only used from the Si570 module but we need to list it here so that
  * the Arduino environment knows we need it.
  */
 #include <Wire.h>
+#include <avr/io.h>
 #ifndef USE_I2C_LCD
   #include <LiquidCrystal.h>
 #else
   #include <LiquidTWI.h>
 #endif
 
-#define LCD_COL (16)
-#define LCD_ROW (2)
-//#define LCD_COL (20)
-//#define LCD_ROW (4)
-#define LCD_STR_CEL "%-16.16s"
-//#define LCD_STR_CEL "%-20.20s"  // For 20 Character LCD Display
-
-
-#include <avr/io.h>
-#include "A1Main.h"
-#ifdef USE_PCA9546
-  #include "PCA9546.h"
-#endif
 #include "Si570.h"
 #include "debug.h"
 #include "NonVol.h"
 #include "Rf386.h"
 #include "MorseCode.h"
 #include "Macro.h"
+#include "tuning.h"
 
 #ifdef USE_PCA9546
-  #define PCA9546_I2C_ADDRESS 0x70
+  #include "PCA9546.h"
 #endif
-#define SI570_I2C_ADDRESS   0x55
 
-// USB and LSB IF frequencies
-#define IF_FREQ_USB   (19997000L)
-#define IF_FREQ_LSB   (19992000L)
-//#define IF_FREQ_USB   (0)  // FOR debug ONLY
-//#define IF_FREQ_LSB   (0)  // FOR debug ONLY
+#include "A1Main.h"
+#include "config.h"
 
-#define CW_TIMEOUT (600L) // in milliseconds, this is the parameter that determines how long the tx will hold between cw key downs
-
-#define MAX_FREQ (30000000UL)
-#define DEAD_ZONE (40)
+void setup(); // # A Hack, An Arduino IED Compiler Preprocessor Fix
 
 enum ButtonPressModes { // Button Press Modes
     MOMENTARY_PRESS = 1,
@@ -132,16 +101,6 @@ enum VFOs { // Available VFOs
     VFO_B,
 };
 
-// Pin Number for the digital output controls
-#define LSB (2)
-#define TX_RX (3)
-#define CW_KEY (4)
-
-// Pin Numbers for analog inputs
-#define FN_PIN (A3)
-#define ANALOG_TUNING (A2)
-#define ANALOG_KEYER (A1)
-
 #ifdef USE_PCA9546
 PCA9546 *mux;
 #endif
@@ -167,18 +126,13 @@ char blinkChar[2];
 byte refreshDisplay = 0;
 unsigned int blinkCount = 0;
 
-int tuningDir = 0;
-int tuningPosition = 0;
 int tune2500Mode = 0;
 int freqUnStable = 1;
-int tuningPositionDelta = 0;
 int cursorDigitPosition = 0;
-int tuningPositionPrevious = 0;
 int cursorCol, cursorRow, cursorMode;
 char* const sideBandText[] PROGMEM = {"Auto SB","USB","LSB"};
 byte sideBandMode = 0;
 
-boolean tuningLocked = 0; //the tuning can be locked: wait until Freq Stable before unlocking it
 boolean inTx = 0, inPtt = 0;
 boolean keyDown = 0;
 boolean isLSB = 0;
@@ -390,173 +344,69 @@ void setBandswitch(unsigned long freq){
 
 
 // ###############################################################################
-void readTuningPot(){
-    
-    tuningPosition = analogRead(ANALOG_TUNING);
-}
 
-
-
-#ifdef USE_ALTERNATE_TUNING
-
-// ###############################################################################
-// An Alternate Tuning Strategy or Method
-// This method somewhat emulates a normal Radio Tuning Dial
-// Tuning Position by Switches on FN Circuit
-// Author: Eldon R. Brown - WA0UWH, Apr 25, 2014
 void checkTuning() {
-#define AUTOTIMER_RATE_MS (200)
-  long deltaFreq;
-  unsigned long newFreq;
-  static unsigned long AutoTimer = 0;
-
-  // Count Down to Freq Stable, i.e. Freq has not changed recently
-  if (freqUnStable && freqUnStable < 5) refreshDisplay++;
-  freqUnStable = max(--freqUnStable, 0);
-  
-  // Do Not Change Freq while in Transmit or button opperation
-  // Allow Tuning knob to be recentered without changing Frequency
-  if (tuningLocked) {
-      tuningPositionPrevious = tuningPosition;
-      return;
-  }
-  
-  // Compute tuningDaltaPosition from tuningPosition
-  tuningPositionDelta = tuningPosition - tuningPositionPrevious;
-  
-  tuningDir = 0;  // Set Default Tuning Directon to neather Right nor Left
-  
-  if (AutoTimer > millis()) return;
-  
-  if (tuningPosition < DEAD_ZONE * 2 && AutoTimer < millis()) { // We must be at the Low end of the Tuning POT
-      tuningPositionDelta = -DEAD_ZONE;
-      AutoTimer = millis() + AUTOTIMER_RATE_MS;
-      if (tuningPosition > DEAD_ZONE ) AutoTimer += AUTOTIMER_RATE_MS*3/2; // At very end of Tuning POT
-  }
-  if (tuningPosition > 1023 - DEAD_ZONE * 2 && AutoTimer < millis()) { // We must be at the High end of the Tuning POT
-      tuningPositionDelta = +DEAD_ZONE;
-      AutoTimer = millis() + AUTOTIMER_RATE_MS;
-      if (tuningPosition  < 1023 - DEAD_ZONE / 8) AutoTimer += AUTOTIMER_RATE_MS*3/2; // At very end of Tuning POT
-  }
-  
-  // Check to see if Digit Change Action is Required, Otherwise Do Nothing via RETURN 
-  if (abs(tuningPositionDelta) < DEAD_ZONE) return;
-
-  tuningDir = tuningPositionDelta < 0 ? -1 : tuningPositionDelta > 0 ? +1 : 0;  
-  if (!tuningDir) return;  // If Neather Direction, Abort
-  
   // Decode and implement RIT Tuning
   if (ritOn) {
-      ritVal += tuningDir * 10;
-      ritVal = constrain(ritVal, -990, +990);
-      tuningPositionPrevious = tuningPosition; // Set up for the next Iteration
-      refreshDisplay++;
-      updateDisplay();
-      return;
+    ritVal += tuning_alternate_direction() * 10;
+    ritVal = constrain(ritVal, -990, +990);
+    refreshDisplay++;
+    updateDisplay();
+    return;
   }
-  
-  if (cursorDigitPosition < 1) return; // Nothing to do here, Abort, Cursor is in Park position
+
+#ifdef USE_ALTERNATE_TUNING
+  // ###############################################################################
+  // An Alternate Tuning Strategy or Method
+  // This method somewhat emulates a normal Radio Tuning Dial
+  // Tuning Position by Switches on FN Circuit
+  // Author: Eldon R. Brown - WA0UWH, Apr 25, 2014
+  long deltaFreq;
+  unsigned long newFreq;
+  int tuningDir = getTuningDirection();
+
+  // Count Down to Freq Stable, i.e. Freq has not changed recently
+  if (freqUnStable && freqUnStable < 5) 
+    refreshDisplay++;
+  freqUnStable = max(--freqUnStable, 0);
+
+  if (tuningDir == 0) {
+    return;
+  }
 
   // Select Tuning Mode; Digit or 2500 Step Mode
   if (tune2500Mode) {
-      // Inc or Dec Freq by 2.5K, useful when tuning between SSB stations
-      cursorDigitPosition = 3;
-      deltaFreq += tuningDir * 2500;
-      
-      newFreq = (frequency / 2500) * 2500 + deltaFreq;
+    // Inc or Dec Freq by 2.5K, useful when tuning between SSB stations
+    cursorDigitPosition = 3;
+    deltaFreq += tuningDir * 2500;
+    newFreq = (frequency / 2500) * 2500 + deltaFreq;
   }
   else {
-      // Compute deltaFreq based on current Cursor Position Digit
-      deltaFreq = tuningDir;
-      for (int i = cursorDigitPosition; i > 1; i-- ) deltaFreq *= 10;
-  
-      newFreq = frequency + deltaFreq;  // Save Least Digits Mode
+    // Compute deltaFreq based on current Cursor Position Digit
+    deltaFreq = tuningDir;
+    for (int i = cursorDigitPosition; i > 1; i-- ) 
+      deltaFreq *= 10;
+    newFreq = frequency + deltaFreq;  // Save Least Digits Mode
   }
   
   //newFreq = (frequency / abs(deltaFreq)) * abs(deltaFreq) + deltaFreq; // Zero Lesser Digits Mode 
   if (newFreq != frequency) {
-      // Update frequency if within range of limits, 
-      // Avoiding Nagative underRoll of UnSigned Long, and over-run MAX_FREQ  
-      if (newFreq <= MAX_FREQ) {
-        frequency = newFreq;
-        if (!editIfMode) vfoActive == VFO_A ? vfoA = frequency : vfoB = frequency;
-        refreshDisplay++;
-      }
-      freqUnStable = 100; // Set to UnStable (non-zero) Because Freq has been changed
-      tuningPositionPrevious = tuningPosition; // Set up for the next Iteration
+    // Update frequency if within range of limits, 
+    // Avoiding Nagative underRoll of UnSigned Long, and over-run MAX_FREQ  
+    if (newFreq <= MAX_FREQ) {
+      frequency = newFreq;
+      if (!editIfMode) 
+        vfoActive == VFO_A ? vfoA = frequency : vfoB = frequency;
+      refreshDisplay++;
+    }
+    freqUnStable = 100; // Set to UnStable (non-zero) Because Freq has been changed
+    tuningPositionPrevious = tuningPosition; // Set up for the next Iteration
   }
-}
-
 #else
-void checkTuning(){
-  int tuningPot = tuningPosition - 512;
-  if (-50 < tuningPot && tuningPot < 50){
-    //we are in the middle, so, let go of the lock
-    if (tuningLocked)
-      tuningLocked = 0;
-    delay(50);
-    return;
-  }
-
-  //if the tuning is locked and we are outside the safe band, then we don't move the freq.
-  if (tuningLocked)
-    return;
-
-  //dead region between -100 and 100
-  if (tuningPot > 100){
-    if (tuningPot < 150)
-      frequency += 10;
-    else if (tuningPot < 200)
-      frequency += 30;
-    else if (tuningPot < 250)
-      frequency += 100;
-    else if (tuningPot < 300)
-      frequency += 300;
-    else if (tuningPot < 350)
-      frequency += 1000;
-    else if (tuningPot < 400)
-      frequency += 3000;
-    else if (tuningPot < 450){
-      frequency += 100000;
-      updateDisplay();
-      delay(300);
-    }
-    else if (tuningPot < 500){
-      frequency += 1000000;
-      updateDisplay();
-      delay(300);
-    }
-  }
-
-  if (-100 > tuningPot){
-    if (tuningPot > -150)
-      frequency -= 10;
-    else if (tuningPot > -200)
-      frequency -= 30;
-    else if (tuningPot > -250)
-      frequency -= 100;
-    else if (tuningPot > -300)
-      frequency -= 300;
-    else if (tuningPot > -350)
-      frequency -= 1000;
-    else if (tuningPot > -400)
-      frequency -= 3000;
-    else if (tuningPot > -450){
-      frequency -= 100000;
-      updateDisplay();
-      delay(300);
-    }
-    else if (tuningPot > -500){
-      frequency -= 1000000;
-      updateDisplay();
-      delay(300);
-    }
-  }
-  delay(50);
+  frequency += tuning_frequency_delta();
   refreshDisplay++;
-}
-
 #endif
+}
 
 
 // ###############################################################################
@@ -616,7 +466,8 @@ void checkTX() {
         DEBUG(P("%s %d: TX to RX"), __func__, __LINE__);
         //Change the radio back to receive
         changeToReceive();
-        inTx = inPtt = cwTimeout = tuningLocked = 0;
+        tuning_unlock();
+        inTx = inPtt = cwTimeout = 0;
         if (AltTxVFO) toggleAltVfo(inTx);  // Clear Alt VFO if needed
         refreshDisplay++;
         return;
@@ -633,7 +484,8 @@ void checkTX() {
             //give the T/R relays a few ms to settle
             delay(50);
         }
-        inTx = keyDown = tuningLocked = 1;
+        tuning_lock();
+        inTx = keyDown = 1;
         startSidetone(); //start the side-tone
         cwTimeout = CW_TIMEOUT + millis(); // Start the timer the key is down
         return;
@@ -674,7 +526,8 @@ void checkTX() {
             if (!inBandLimits(frequency)) return; // Do nothing if TX is out-of-bounds 
             DEBUG(P("\nFunc: %s %d: Start PTT"), __func__, __LINE__); 
             if (AltTxVFO) toggleAltVfo(inTx); // Set Alt VFO if Needed
-            inTx = inPtt = tuningLocked = 1;
+            tuning_lock();
+            inTx = inPtt = 1;
             delay(50);
             cwTimeout = CW_TIMEOUT + millis(); // Restat timer
             refreshDisplay++;
@@ -740,7 +593,7 @@ int btnDown(){
   
   if (val>1000) return 0;
   
-  tuningLocked = 1; // Holdoff Tuning until button is processed
+  tuning_lock(); // Holdoff Tuning until button is processed
   // 47K Pull-up, and 4.7K switch resistors,
   // Val should be approximately = (btnN×4700)÷(47000+4700)×1023
 
@@ -763,11 +616,6 @@ void deDounceBtnRelease() {
     while (i--) { // DeBounce Button Release, Check twice
       while (btnDown()) delay(20);
     }
-    // The following allows the user to re-center the
-    // Tuning POT during any Key Press-n-hold without changing Freq.
-    readTuningPot();
-    tuningPositionPrevious = tuningPosition;
-    tuningLocked = 0; // Allow Tuning to Proceed
 }
 
 
@@ -935,18 +783,16 @@ void decodeSideBandMode(int btn) {
 
 // ###############################################################################
 void decodeMoveCursor(int dir) {
-
-      tuningPositionPrevious = tuningPosition;
-      if (tune2500Mode) { tune2500Mode = 0; return; } // Abort tune2500Mode if Cursor Button is pressed
-      cursorDigitPosition += dir;
-      cursorDigitPosition = constrain(cursorDigitPosition, 0, 7);
-      freqUnStable = 0;  // Set Freq is NOT UnStable, as it is Stable     
-      refreshDisplay++;
+  // Abort tune2500Mode if Cursor Button is pressed
+  if (tune2500Mode) { tune2500Mode = 0; return; } 
+  cursorDigitPosition += dir;
+  cursorDigitPosition = constrain(cursorDigitPosition, 0, 7);
+  freqUnStable = 0;  // Set Freq is NOT UnStable, as it is Stable     
+  refreshDisplay++;
 }
 
 // -------------------------------------------------------------------------------
 void decodeAux(int btn) {
-    
     //debug("%s btn %d", __func__, btn);
     sprintf(c, P("Btn: %.2d"), btn);
     printLine2CEL(c);
@@ -992,6 +838,12 @@ void decodeFN(int btn) {
 
   switch (getButtonPushMode(btn)) { 
     case MOMENTARY_PRESS:
+#ifndef USE_ALTERNATE_TUNING
+      // If rit was on, we will disable it and wait for the pot to return to the neutral zone before unlocking
+      if (ritOn) {
+        tuning_lock();
+      }
+#endif
        ritOn = !ritOn; ritVal = 0;     
        refreshDisplay++;
        updateDisplay();
@@ -1125,10 +977,9 @@ void setup() {
   // Setup in Receive Mode
   changeToReceive();
   
-  // Setup to read Tuning POT
-  pinMode(ANALOG_TUNING, INPUT);
-  digitalWrite(ANALOG_TUNING, 1); //old way to enable the built-in pull-ups
-  
+  // Initialize the tuning pot module
+  tuning_setup();
+
   // Setup to read Buttons
   pinMode(FN_PIN, INPUT);
   #ifdef USE_MULTIPLEXED_BUTTONS
@@ -1140,8 +991,6 @@ void setup() {
   DEBUG(P("Pre Load EEPROM"));
   loadUserPerferences();
   
-  // Setup the First Tuning POT Position
-  tuningPositionPrevious = tuningPosition = analogRead(ANALOG_TUNING);
   refreshDisplay++; 
 }
 
@@ -1151,26 +1000,27 @@ void setup() {
 void loop(){
   unsigned long freq;
   
-  readTuningPot();
+  tuning_loop();
   checkTuning();
 
   checkTX();
-  
   checkButton();
 
   if (editIfMode) {  // Set freq to Current Dial Trail IF Freq + VFO - Prev IF Freq
       freq = frequency;
-      if (ritOn) freq += ritVal;
+      if (ritOn) 
+        freq += ritVal;
       freq += (vfoActive == VFO_A) ? vfoA : vfoB;
       vfo->setFrequency(freq);
-  } else setFreq(frequency);
+  } 
+  else 
+    setFreq(frequency);
   
   decodeSideband();
   setBandswitch(frequency);
   setRf386BandSignal(frequency);
   
   updateDisplay();
-   
 }
 
 // ###############################################################################
