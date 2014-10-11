@@ -403,8 +403,12 @@ void checkTuning() {
     tuningPositionPrevious = tuningPosition; // Set up for the next Iteration
   }
 #else
-  frequency += tuning_frequency_delta();
-  refreshDisplay++;
+  long delta = tuning_frequency_delta();
+  if (delta != 0) {
+    // Only refresh the display when there is a change to reduce LCD update noise in the display
+    frequency += delta;
+    refreshDisplay++;
+  }
 #endif
 }
 
