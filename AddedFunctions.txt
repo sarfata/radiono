@@ -1,0 +1,30 @@
+The following functions are inplemented
+  
+    o High resolution, plus/minus 1Hz Tuning (thanks to Jeff - KO7M).
+    o Near Normal Dial Tuning Method as found on most Dial Radio system.
+    o Support for six additional buttons
+    o Tuning Cursor positioning via Left/Right push buttons.
+    o Automatic (original) or Manual Selection of Sideband via push button.
+    o Ham Band Switching via Up and Down push buttons
+    o Nine Ham Band Memories, with Frequency and Sideband Saved
+    o Two Memories for each Band, implemented and saved as "A" and "B" VFO (99% DONE)
+    o RF386 Power Amplifier Filter Selection via generated clock pulses on PD7 (pin13).
+      Note: It works now, with new revised timing pulses (I was off by 1000 time).
+    o Tuning by 2500Hz Steps (similar to FT-817, mode set via button 7)
+    o Re-Center Tuning Knob while any button is pressed, without changing the Freq
+    o RIT Mode, implemented as +-990Hz in 10Hz Steps
+    o Limit TX to within the Ham Bands (currently, the user must control Sidebands
+      out side of the Ham Bands)
+    o Include Jeff -KO7M Si570 Driver "Tuning Click" fix
+    o IF Freq Adjustments for either USB and LSB
+    o On demand, save user specified Band Memories into non-volatile memory, and
+      retrieved on power up.
+    o Factory Reset - By Holding any Button at Power-ON or Processor Reset
+    o Split, Cross-Band or In-Band operations; Transmit on "A" VFO and Receive on "B" VFO
+      (Note: I need to check the Regulations to see if Split operations is legal on HF?)
+    o Two CW and Two QRSS User Beacon/Macro Messages/Modes, A quick Press CW Key will Abort Message
+      (Note: Macros and Beacons are not currently allowed in Split Mode, maybe someday)
+
+    See: https://github.com/wa0uwh/radiono_erb/tree/AltTuneMethod
+
+--

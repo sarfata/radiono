@@ -18,3 +18,38 @@ Copyright (C)2014  Ashhar Farhan
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+Modified by: Jeff Witlatch - KO7M - Copyright (C) 2014
+
+	 1). Added Si570 1Hz VFO Resolution
+ 
+Modified by: Eldon R. Brown (ERB) - WA0UWH - Copyright (C) 2014
+
+	 1). Added An Alternate Tuning Method, with Cursor and POT
+
+	 2). Added Multiple Button Support
+
+	 3). Added RIT Function
+
+	 4). Added Manual Sideband Selection
+
+	 5). Added Band Selection UP/DOWN
+
+	 6). Added Band Selection Memories for both VFO_A and VFO_B
+
+	 7). Added Band Limits for Transmit
+
+	 8). Added Alternate VFO for Transmit, Split Operation
+
+	 9). Added Rf386 Band Selecter Encoder
+
+	10). Added Edit and Set IF Frequency for Dial Calibration for USB and LSB
+
+	11). Added Support for 2500Hz Tuning Mode
+
+	12). Added Non-Volatile Memory Storage
+
+	13). Added Morse Code Functions, MACROs and Beacon
+
+--

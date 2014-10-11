@@ -1,0 +1,93 @@
+Tuning Knob Operations, used for both Frequency and RIT
+
+   Tuning POT = Incremental Near Center
+   Tuning POT = Auto Increment Near Extremes
+   Tuning POT = Faster Auto Increment At Extremes
+
+
+FN Button Operations
+
+   Btn1 Single_Press = Toggle RIT Mode ON/OFF 
+   Btn1 Double_Press = Swap A/B VFO's, Cancels any Pending Edit-IF-Freq 
+   Btn1   Long_Press = VFO Copy, A>B or B>A
+ 
+   Btn2 Single_Press =  Left, Move Frequency Cursor 
+   Btn3 Single_Press = Right, Move Frequency Cursor
+ 
+   Btn4 Single_Press = Select: USB, LSB, or Auto USB (default) 
+   Btn4 Double_Press = Saves User-Preferences  to  Non-Volatile Memory
+   Btn4   Long_Press = Loads User-Preferences from Non-Volatile Memory
+   Btn4  Alt_PressFN = Toggle Split Operation ON/OFF
+   Btn4  Alt_PressLT = CW Send Macro MESG1
+   Btn4  Alt_PressRT = CW Send Macro MESG2
+ 
+   Btn5 Single_Press =   Up, Change HAM Band (saves current Freq and SSB Mode) 
+   Btn6 Single_Press = Down, Change HAM Band (saves current Freq and SSB Mode)
+ 
+   Btn7 Single_Press = Toggle Tune 2500Hz Mode ON/OFF 
+   Btn7   Long_Press = Display, and Edit IF-Freq, Saves IF-Freq
+   Btn7  Alt_PressLT = QRSS Send Macro MESG1
+   Btn7  Alt_PressRT = QRSS Send Macro MESG2
+
+   Where:
+
+         Alt_PressFN = First press a BtnN (while holding) quickly press FN and
+                       release FN, then release BtnN
+         Alt_PressLT = First press a BtnN (while holding) quickly press LEFT and
+                       release LEFT, then release BtnN
+         Alt_PressRT = First press a BtnN (while holding) quickly press RIGHT and
+                       release RIGHT, then release BtnN
+
+
+User-Preferences
+
+   The Current Saved/Loaded User-Preference Include:
+
+       The Current Band, Frequency and Sideband Selection
+       The Last Frequency and Sideband used within each Ham Bands
+       IF-Freq Adjustments
+       The Current VFO "A/B" (or "I" if in  IF-Freq Edit Mode)
+       Dial CAL for both USB and LSB
+
+   Excluded from User-Preferences Save/Load are:
+
+       RIT
+       Cursor Position
+
+   The goal of saved User-Preferences is to return the Receiver
+   to a previously saved configuration at the next Power-ON or Processor Reset.
+ 
+
+Factory Reset = Holding any Button at Power-ON or Processor Reset.
+
+   Note: previously saved User-Preference can be re-loaded with another
+   Power-ON, Reset, or with the Load Button.
+
+
+Error and Status Messages
+
+   Load Fail = The internal Non-Volatile ID does not match the current Rev
+   of the Save/Load code, please re-save User-Preferences.
+
+   Load Fail CSum = The internal Check-Sum of the Non-Volatile Memory does
+   not match as expected, please re-save User-Preferences.
+
+   Loading nnnB = This is the size of the User-Preferences Loaded
+      from Non-Volatile Memory.
+
+   Storing nnnB = This is the size of the User-Preferences Saved
+      to Non-Volatile Memory.
+
+
+IF Freq Calibrate
+
+   1. Select a Sideband
+   2. Adjust VFO Display the expected Zero Beat Frequency of you Standard
+   3. Long-Press btn7
+   4. Zero Beat, adjust as necessary with the Cursor and Dial, or the RIT
+   5. To Complete Calibration, Long-Press btn7 (or, to abort CAL - Double-Press FN)
+   6. To Save to Non-Volatile Memory Double-Press btn4
+   7. Do the same for the other Sideband
+
+
+--
