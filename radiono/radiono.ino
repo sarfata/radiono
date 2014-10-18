@@ -144,6 +144,19 @@ void setup() {
   printBuff[0] = 0;
   printLine1("Raduino ");
   lcd.print(RADIONO_VERSION);
+  printLine2(" N2CQR Special!");
+  delay(3000);
+
+  lcd.clear();
+  printLine1("In the midst of ");
+  printLine2("  Solder Smoke  ");
+  delay(2000);
+  printLine1(" reward awaits  ");
+  printLine2("the homebrewers.");
+
+  delay(2500);
+  lcd.clear();
+
 
   // The library automatically reads the factory calibration settings of your Si570
   // but it needs to know for what frequency it was calibrated for.
@@ -172,6 +185,9 @@ void setup() {
   digitalWrite(CW_KEY, 0);
   digitalWrite(TX_RX, 1); //old way to enable the built-in pull-ups
   digitalWrite(FBUTTON, 1);
+
+  // Force initial refresh
+  refreshDisplay++;
 }
 
 void setSideband(){
